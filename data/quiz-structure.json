@@ -1,0 +1,994 @@
+{
+  "metadata": {
+    "name": "Diagnostys Quiz - Versão Sobrevivência",
+    "version": "2024-03-15",
+    "description": "Sistema de diagnóstico operacional com IA, automação e pontuação ponderada.",
+    "totalScore": 100,
+    "sections": [
+      {"id": "gateway", "title": "Portão - Modelo de Negócio", "score": 0},
+      {"id": "profile", "title": "Perfil do Negócio", "score": 0},
+      {"id": "m1", "title": "Muralha 1 - Linha de Frente", "score": 80},
+      {"id": "m2", "title": "Muralha 2 - Linha de Defesa", "score": 9},
+      {"id": "m3", "title": "Muralha 3 - Linha de Ataque", "score": 10},
+      {"id": "m4", "title": "Muralha 4 - Inteligência", "score": 1}
+    ]
+  },
+  "questions": [
+    {
+      "id": "Q1",
+      "section": "gateway",
+      "title": "Modelo de Negócio",
+      "type": "gateway_neural",
+      "required": true,
+      "context": "Define contexto_modelo (salao|delivery) e ativa benchmarks específicos.",
+        "triggerEffects": {
+          "contexto_modelo": ["salao", "delivery"],
+          "contexto_benchmarks": {
+            "CMV_max": 0.35,
+            "Folha_max": 0.40
+          }
+        },
+      "options": [
+        {"label": "🍽️ Salão (consumo no local)", "value": "salao"},
+        {"label": "🚗 Delivery / Dark Kitchen", "value": "delivery"}
+      ]
+    },
+    {
+      "id": "Q1_subtipo",
+      "section": "gateway",
+      "title": "Subtipo de Negócio",
+      "type": "conditional_context",
+      "required": true,
+      "displayRule": "Renderiza de acordo com Q1.",
+      "options": {
+        "salao": [
+          {"label": "Fast Food / QSR", "value": "qsr", "tempo_medio_ref": 25, "ticket_alvo": 35},
+          {"label": "Casual Dining", "value": "casual", "tempo_medio_ref": 65, "ticket_alvo": 75},
+          {"label": "Fine Dining", "value": "fine", "tempo_medio_ref": 120, "ticket_alvo": 180},
+          {"label": "Bar / Gastrobar", "value": "bar", "tempo_medio_ref": 45, "ticket_alvo": 50}
+        ],
+        "delivery": [
+          {"label": "Dark Kitchen", "value": "dark", "capacidade_hora": 75, "comissao_max": 0.28},
+          {"label": "Delivery Puro", "value": "pure", "capacidade_hora": 50, "comissao_max": 0.25},
+          {"label": "Cozinha industrial", "value": "industrial", "capacidade_hora": 150, "comissao_max": 0.15},
+          {"label": "Delivery como canal principal", "value": "hybrid", "capacidade_hora": 40, "comissao_max": 0.22}
+        ]
+      }
+    },
+    {
+      "id": "Q2",
+      "section": "profile",
+      "title": "Faturamento Mensal",
+      "type": "radio",
+      "required": true,
+      "algorithm": "K-Means para detecção de outliers; define variavel_faturamento_base.",
+      "options": [
+        {"label": "Menos de R$ 30.000", "valor_numerico": 25000, "cluster": "micro"},
+        {"label": "R$ 30.000 - R$ 80.000", "valor_numerico": 55000, "cluster": "pequeno"},
+        {"label": "R$ 80.000 - R$ 200.000", "valor_numerico": 140000, "cluster": "medio"},
+        {"label": "R$ 200.000 - R$ 500.000", "valor_numerico": 350000, "cluster": "grande"},
+        {"label": "R$ 500.000 - R$ 1.000.000", "valor_numerico": 750000, "cluster": "corporativo"},
+        {"label": "Acima de R$ 1.000.000", "valor_numerico": 1500000, "cluster": "rede"}
+      ]
+    },
+    {
+      "id": "Q3",
+      "section": "profile",
+      "title": "Volume Diário",
+      "type": "radio",
+      "required": true,
+      "algorithm": "Estimador Bayesiano com miniteste adaptativo.",
+      "display": {
+        "salao": "Quantos clientes por dia?",
+        "delivery": "Quantos pedidos por dia?"
+      },
+      "options": [
+        {"label": "👈 Eu não sei (vamos estimar!)", "value": "nao_sei", "trigger_miniteste": true},
+        {"label": "Menos de 20", "valor_numerico": 15},
+        {"label": "20-50", "valor_numerico": 35},
+        {"label": "50-100", "valor_numerico": 75},
+        {"label": "100-200", "valor_numerico": 150},
+        {"label": "200-500", "valor_numerico": 350},
+        {"label": "500+", "valor_numerico": 750}
+      ]
+    },
+    {
+      "id": "Q3a1",
+      "section": "profile",
+      "title": "Miniteste Q3 - Capacidade",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q3 = nao_sei.",
+      "display": {
+        "salao": "Quantas mesas possui?",
+        "delivery": "Quantos pedidos/hora no pico?"
+      },
+      "options": {
+        "salao": [
+          {"label": "Menos de 10 mesas", "valor_numerico": 8, "capacidade_hora": 24},
+          {"label": "10-30 mesas", "valor_numerico": 20, "capacidade_hora": 60},
+          {"label": "30-50 mesas", "valor_numerico": 40, "capacidade_hora": 120},
+          {"label": "Mais de 50 mesas", "valor_numerico": 60, "capacidade_hora": 180}
+        ],
+        "delivery": [
+          {"label": "Menos de 20 pedidos/hora", "valor_numerico": 15, "gargalo": "preparacao"},
+          {"label": "20-50 pedidos/hora", "valor_numerico": 35, "gargalo": "empacotamento"},
+          {"label": "50-100 pedidos/hora", "valor_numerico": 75, "gargalo": "expedicao"},
+          {"label": "Mais de 100 pedidos/hora", "valor_numerico": 150, "gargalo": "infraestrutura"}
+        ]
+      }
+    },
+    {
+      "id": "Q3a2",
+      "section": "profile",
+      "title": "Miniteste Q3 - Ocupação ou Entregadores",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q3 = nao_sei.",
+      "options": {
+        "salao": [
+          {"label": "30-50% lotado", "valor_decimal": 0.4, "fator_conversao": 0.65},
+          {"label": "50-70% lotado", "valor_decimal": 0.6, "fator_conversao": 0.75},
+          {"label": "70-90% lotado", "valor_decimal": 0.8, "fator_conversao": 0.85},
+          {"label": "Sempre lotado", "valor_decimal": 0.95, "fator_conversao": 0.9}
+        ],
+        "delivery": [
+          {"label": "Menos de 5 entregadores", "valor_numerico": 3, "capacidade_entrega": 15},
+          {"label": "5-10 entregadores", "valor_numerico": 7, "capacidade_entrega": 35},
+          {"label": "10-20 entregadores", "valor_numerico": 15, "capacidade_entrega": 75},
+          {"label": "Mais de 20 entregadores", "valor_numerico": 30, "capacidade_entrega": 150}
+        ]
+      }
+    },
+    {
+      "id": "Q4",
+      "section": "profile",
+      "title": "Funcionários",
+      "type": "radio",
+      "required": true,
+      "algorithm": "Regressão linear para custo_folha_estimado e ALERTA_SUPERLOTACAO.",
+      "options": [
+        {"label": "1-3 pessoas", "valor_numerico": 2, "custo_estimado": 4000},
+        {"label": "4-10 pessoas", "valor_numerico": 7, "custo_estimado": 18000},
+        {"label": "11-30 pessoas", "valor_numerico": 20, "custo_estimado": 50000},
+        {"label": "31-100 pessoas", "valor_numerico": 65, "custo_estimado": 162500},
+        {"label": "100+ pessoas", "valor_numerico": 150, "custo_estimado": 375000}
+      ]
+    },
+    {
+      "id": "Q5",
+      "section": "profile",
+      "title": "Tempo de Operação",
+      "type": "radio",
+      "required": true,
+      "algorithm": "Random Forest para risco de sobrevivência.",
+      "options": [
+        {"label": "Pré-abertura / Planejamento", "risco": 0.85, "urgencia": "alta"},
+        {"label": "0-6 meses", "risco": 0.75, "urgencia": "alta"},
+        {"label": "6-18 meses", "risco": 0.5, "urgencia": "media"},
+        {"label": "18-36 meses", "risco": 0.3, "urgencia": "media"},
+        {"label": "3-5 anos", "risco": 0.15, "urgencia": "baixa"},
+        {"label": "5+ anos", "risco": 0.05, "urgencia": "baixa"}
+      ]
+    },
+    {
+      "id": "Q6",
+      "section": "m1",
+      "title": "Rastreamento de GMV Live",
+      "type": "radio",
+      "required": true,
+      "baseScore": 10,
+      "options": [
+        {"label": "Não sei minha meta diária", "pontos": 0},
+        {"label": "Ainda não bati 50%", "pontos": 0, "acao": "urgente"},
+        {"label": "Estou em 60%", "pontos": 4, "acao": "monitorar"},
+        {"label": "Já sei que não vou bater", "pontos": 10, "acao": "contingencia"}
+      ],
+      "followUps": ["Q6a"]
+    },
+    {
+      "id": "Q6a",
+      "section": "m1",
+      "title": "Método GMV Live",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q6 = 4 ou 10 pontos.",
+      "options": {
+        "salao": [
+          {"label": "Sistema digital de mesas", "multiplicador": 1},
+          {"label": "Contagem manual", "multiplicador": 0.75},
+          {"label": "Estimativa visual", "multiplicador": 0.5}
+        ],
+        "delivery": [
+          {"label": "KDS / Sistema de produção", "multiplicador": 1},
+          {"label": "Planilha ou quadro", "multiplicador": 0.75},
+          {"label": "Estimativa verbal", "multiplicador": 0.5}
+        ]
+      }
+    },
+    {
+      "id": "Q7",
+      "section": "m1",
+      "title": "Controle de Fluxo de Caixa 7 Dias",
+      "type": "radio",
+      "required": true,
+      "baseScore": 10,
+      "options": [
+        {"label": "Preciso verificar o saldo primeiro", "pontos": 0},
+        {"label": "Sei que tenho saldo, mas vou confirmar", "pontos": 0},
+        {"label": "Tenho ideia do saldo mas confiro", "pontos": 4},
+        {"label": "Sei exatamente saldo e pagamentos", "pontos": 10}
+      ],
+      "followUps": ["Q7a"]
+    },
+    {
+      "id": "Q7a",
+      "section": "m1",
+      "title": "Método Cashflow",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q7 = 4 ou 10 pontos.",
+      "options": [
+        {"label": "Dashboard tempo real", "multiplicador": 1},
+        {"label": "Planilha diária", "multiplicador": 0.75},
+        {"label": "Extrato bancário", "multiplicador": 0.5}
+      ],
+      "bonusRule": "score_final = pontos_Q7 × multiplicador × (1 + dias_antecipacao × 0.05 até 1.2)"
+    },
+    {
+      "id": "Q8",
+      "section": "m1",
+      "title": "Rastreamento de Pressão de Compra",
+      "type": "radio",
+      "required": true,
+      "baseScore": 10,
+      "options": [
+        {"label": "Não olhei nota fiscal", "pontos": 0},
+        {"label": "Olhei a nota, sem comparar", "pontos": 0},
+        {"label": "Salvei, mas não dividi pelo vendido", "pontos": 4},
+        {"label": "Sei exatamente o indicador", "pontos": 10}
+      ],
+      "followUps": ["Q8a", "Q8b"]
+    },
+    {
+      "id": "Q8a",
+      "section": "m1",
+      "title": "Método Pressão de Compra",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q8 = 4 ou 10 pontos.",
+      "options": [
+        {"label": "Sistema calcula automaticamente", "multiplicador": 1},
+        {"label": "Planilha manual", "multiplicador": 0.75},
+        {"label": "Caderno + calculadora", "multiplicador": 0.5}
+      ]
+    },
+    {
+      "id": "Q8b",
+      "section": "m1",
+      "title": "Valor Pressão de Compra",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q8 = 4 ou 10 pontos.",
+      "options": [
+        {"label": "Não tenho número exato", "valor_decimal": 0.25},
+        {"label": "Menos de 30%", "valor_decimal": 0.28},
+        {"label": "30-35%", "valor_decimal": 0.325},
+        {"label": "35-40%", "valor_decimal": 0.375},
+        {"label": "40-45%", "valor_decimal": 0.425},
+        {"label": "45-50%", "valor_decimal": 0.475},
+        {"label": "Mais de 50%", "valor_decimal": 0.52}
+      ]
+    },
+    {
+      "id": "Q9",
+      "section": "m1",
+      "title": "Rastreamento de Lucro",
+      "type": "radio",
+      "required": true,
+      "baseScore": 10,
+      "options": [
+        {"label": "Não, apenas saldo no banco", "pontos": 0},
+        {"label": "Sim, mas leva 15+ dias", "pontos": 4},
+        {"label": "Sim, em até 5 dias", "pontos": 10}
+      ],
+      "followUps": ["Q9a"]
+    },
+    {
+      "id": "Q9a",
+      "section": "m1",
+      "title": "Método Fechamento de Lucro",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q9 = 4 ou 10 pontos.",
+      "options": [
+        {"label": "Sistema gera DRE automática", "multiplicador": 1},
+        {"label": "Contador envia em 7-10 dias", "multiplicador": 0.75},
+        {"label": "Faço manualmente em planilha", "multiplicador": 0.45}
+      ]
+    },
+    {
+      "id": "Q10",
+      "section": "m1",
+      "title": "Rastreamento de Ticket Médio",
+      "type": "radio_contextual",
+      "required": true,
+      "baseScore": 10,
+      "options": {
+        "delivery": [
+          {"label": "Não acompanho", "pontos": 0},
+          {"label": "Acho que está na média", "pontos": 0},
+          {"label": "Não sei precisar, comissão come margem", "pontos": 4},
+          {"label": "Sei ticket e custo por pedido", "pontos": 10}
+        ],
+          "salao": [
+            {"label": "Não acompanho", "pontos": 0},
+            {"label": "Vi que caiu pela promoção", "pontos": 0},
+            {"label": "Sei percentual que caiu", "pontos": 6},
+            {"label": "Sei porcentagem e causa", "pontos": 10}
+          ]
+        },
+      "followUps": ["Q10a", "Q10b"]
+    },
+    {
+      "id": "Q10a",
+      "section": "m1",
+      "title": "Método Ticket Médio",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Delivery: Q10 = 4 ou 10. Salão: Q10 = 6 ou 10.",
+      "options": [
+        {"label": "PDV calcula automaticamente", "multiplicador": 1},
+        {"label": "Divido faturamento por clientes", "multiplicador": 0.75},
+        {"label": "Plataforma de delivery mostra", "multiplicador": 0.65}
+      ],
+      "penalty": "Se delivery e usa apenas app, multiplicador × 0.6"
+    },
+    {
+      "id": "Q10b",
+      "section": "m1",
+      "title": "Variação Ticket",
+      "type": "radio",
+      "required": true,
+      "options": [
+        {"label": "Não sei a variação", "valor_decimal": 0.085},
+        {"label": "Subiu 5-10%", "valor_decimal": 0.075},
+        {"label": "Estável (+/- 5%)", "valor_decimal": 0.02},
+        {"label": "Caiu 5-10%", "valor_decimal": -0.075},
+        {"label": "Caiu 10-15%", "valor_decimal": -0.125},
+        {"label": "Caiu mais de 15%", "valor_decimal": -0.18}
+      ]
+    },
+    {
+      "id": "Q11",
+      "section": "m1",
+      "title": "Rastreamento de Custo de Pessoal",
+      "type": "radio",
+      "required": true,
+      "baseScore": 10,
+      "options": [
+        {"label": "Não sei. Preciso olhar", "pontos": 0},
+        {"label": "Acho que sim", "pontos": 0},
+        {"label": "Sei que não dá", "pontos": 4},
+        {"label": "Já estimei percentual sobre faturamento", "pontos": 10}
+      ],
+      "followUps": ["Q11a", "Q11b"]
+    },
+    {
+      "id": "Q11a",
+      "section": "m1",
+      "title": "Método Custo Pessoal",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q11 = 4 ou 10 pontos.",
+      "options": [
+        {"label": "Sistema de folha integrado", "multiplicador": 1},
+        {"label": "Planilha mensal", "multiplicador": 0.75},
+        {"label": "Contador envia", "multiplicador": 0.6}
+      ]
+    },
+    {
+      "id": "Q11b",
+      "section": "m1",
+      "title": "Valor Custo Pessoal",
+      "type": "radio",
+      "required": true,
+      "options": [
+        {"label": "Não sei a % exata", "valor_decimal": null},
+        {"label": "Menos de 25%", "valor_decimal": 0.23},
+        {"label": "25-30%", "valor_decimal": 0.275},
+        {"label": "30-35%", "valor_decimal": 0.325},
+        {"label": "35-40%", "valor_decimal": 0.375},
+        {"label": "40-45%", "valor_decimal": 0.425},
+        {"label": "45-50%", "valor_decimal": 0.475},
+        {"label": "Mais de 50%", "valor_decimal": 0.52}
+      ]
+    },
+    {
+      "id": "Q12",
+      "section": "m1",
+      "title": "Rastreamento de Ocupação/Capacidade",
+      "type": "radio_contextual",
+      "required": true,
+      "baseScore": 10,
+      "options": {
+        "salao": [
+          {"label": "Não conto", "pontos": 0},
+          {"label": "Vejo visualmente", "pontos": 4},
+          {"label": "Sistema marca 15% vazio", "pontos": 10}
+        ],
+          "delivery": [
+            {"label": "Não recuso", "pontos": 0},
+            {"label": "Recuso quando cozinha grita", "pontos": 4},
+            {"label": "Sistema bloqueia automaticamente", "pontos": 10}
+          ]
+        },
+      "followUps": ["Q12a"]
+    },
+    {
+      "id": "Q12a",
+      "section": "m1",
+      "title": "Método Ocupação/Capacidade",
+      "type": "radio_contextual",
+      "required": true,
+      "displayRule": "Somente se Q12 = 4 ou 10 pontos.",
+      "options": {
+        "salao": [
+          {"label": "Sistema de reservas", "multiplicador": 1},
+          {"label": "Contagem manual", "multiplicador": 0.75},
+          {"label": "Estimativa do gerente", "multiplicador": 0.5}
+        ],
+        "delivery": [
+          {"label": "Sistema bloqueia", "multiplicador": 1},
+          {"label": "Chef avisa", "multiplicador": 0.75},
+          {"label": "Não controlo", "multiplicador": 0.4}
+        ]
+      }
+    },
+    {
+      "id": "Q13",
+      "section": "m1",
+      "title": "Rastreamento de Perda/Desperdício",
+      "type": "radio",
+      "required": true,
+      "baseScore": 10,
+      "options": [
+        {"label": "Não sei", "pontos": 0},
+        {"label": "Muito pouco", "pontos": 0},
+        {"label": "Uns R$ 50-100/dia", "pontos": 4},
+        {"label": "R$ 80/dia e já cortei itens", "pontos": 10}
+      ],
+      "followUps": ["Q13a"]
+    },
+    {
+      "id": "Q13a",
+      "section": "m1",
+      "title": "Método Perda/Desperdício",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q13 = 4 ou 10 pontos.",
+      "options": [
+        {"label": "Sistema de estoque", "multiplicador": 1},
+        {"label": "Planilha diária", "multiplicador": 0.75},
+        {"label": "Anoto quando lembro", "multiplicador": 0.5}
+      ]
+    },
+    {
+      "id": "Q14",
+      "section": "m2",
+      "title": "Rastreamento de Break-Even Diário",
+      "type": "radio",
+      "required": true,
+      "baseScore": 2,
+      "options": [
+        {"label": "Não sei", "pontos": 0},
+        {"label": "Tenho ideia aproximada", "pontos": 0},
+        {"label": "Sei quanto mas não bati", "pontos": 1},
+        {"label": "Sei exatamente e estou agindo", "pontos": 2}
+      ],
+      "followUps": ["Q14a"]
+    },
+    {
+      "id": "Q14a",
+      "section": "m2",
+      "title": "Método Break-Even",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q14 = 1 ou 2 pontos.",
+      "options": [
+        {"label": "Fórmula no sistema", "multiplicador": 1},
+        {"label": "Contador calculou", "multiplicador": 0.75},
+        {"label": "Chute baseado na experiência", "multiplicador": 0.5}
+      ]
+    },
+    {
+      "id": "Q15",
+      "section": "m2",
+      "title": "Rastreamento de Margem por Produto",
+      "type": "radio",
+      "required": true,
+      "baseScore": 2,
+      "options": [
+        {"label": "Não sei a margem", "pontos": 0},
+        {"label": "Acho que é boa", "pontos": 0},
+        {"label": "Tenho itens com margem baixa", "pontos": 1},
+        {"label": "Já aumentei preço", "pontos": 2}
+      ],
+      "followUps": ["Q15a"]
+    },
+    {
+      "id": "Q15a",
+      "section": "m2",
+      "title": "Método Margem Produto",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q15 = 1 ou 2 pontos.",
+      "options": [
+        {"label": "Sistema com ficha técnica", "multiplicador": 1},
+        {"label": "Planilha de custos", "multiplicador": 0.75},
+        {"label": "Lista dos principais", "multiplicador": 0.5}
+      ]
+    },
+    {
+      "id": "Q16",
+      "section": "m2",
+      "title": "Rastreamento de Estoque Ótimo",
+      "type": "radio",
+      "required": true,
+      "baseScore": 2,
+      "options": [
+        {"label": "Não tenho controle", "pontos": 0},
+        {"label": "Acho que 10 dias", "pontos": 0},
+        {"label": "Tenho mais de 7 dias", "pontos": 1},
+        {"label": "Já criei festival de desova", "pontos": 2}
+      ],
+      "followUps": ["Q16a"]
+    },
+    {
+      "id": "Q16a",
+      "section": "m2",
+      "title": "Método Estoque",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q16 = 1 ou 2 pontos.",
+      "options": [
+        {"label": "Sistema de gestão integrado", "multiplicador": 1},
+        {"label": "Contagem manual 2x/semana", "multiplicador": 0.75},
+        {"label": "Estimativa visual", "multiplicador": 0.5}
+      ]
+    },
+    {
+      "id": "Q17",
+      "section": "m2",
+      "title": "Rastreamento de Despesas Fixas",
+      "type": "radio",
+      "required": true,
+      "baseScore": 1,
+      "options": [
+        {"label": "Não sei", "pontos": 0},
+        {"label": "Acho que sim", "pontos": 0},
+        {"label": "Está em 32%", "pontos": 0.5},
+        {"label": "35% e já renegociei", "pontos": 1}
+      ],
+      "followUps": ["Q17a"]
+    },
+    {
+      "id": "Q17a",
+      "section": "m2",
+      "title": "Método Despesas Fixas",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q17 = 0.5 ou 1 ponto.",
+      "options": [
+        {"label": "Software financeiro automatizado", "multiplicador": 1},
+        {"label": "Planilha manual", "multiplicador": 0.75},
+        {"label": "Pasta com contas", "multiplicador": 0.5}
+      ]
+    },
+    {
+      "id": "Q18",
+      "section": "m2",
+      "title": "Rastreamento de Tempo de Espera",
+      "type": "radio_contextual",
+      "required": true,
+      "baseScore": 1,
+      "options": {
+        "salao": [
+          {"label": "Não cronometrei", "pontos": 0},
+          {"label": "Teve reclamação", "pontos": 0},
+          {"label": "40% esperaram", "pontos": 0.5},
+          {"label": "60% esperaram", "pontos": 1}
+        ],
+        "delivery": [
+          {"label": "Não cronometrei", "pontos": 0},
+          {"label": "Teve reclamação", "pontos": 0},
+          {"label": "40% demoraram", "pontos": 0.5},
+          {"label": "60% demoraram", "pontos": 1}
+        ]
+      },
+      "followUps": ["Q18a"]
+    },
+    {
+      "id": "Q18a",
+      "section": "m2",
+      "title": "Método Tempo",
+      "type": "radio_contextual",
+      "required": true,
+      "displayRule": "Somente se Q18 = 0.5 ou 1 ponto.",
+      "options": {
+        "salao": [
+          {"label": "Sistema de fila digital", "multiplicador": 1},
+          {"label": "Cronômetro manual", "multiplicador": 0.75},
+          {"label": "Feedback da equipe", "multiplicador": 0.5}
+        ],
+        "delivery": [
+          {"label": "Dashboard da plataforma", "multiplicador": 1},
+          {"label": "Cronômetro por pedido", "multiplicador": 0.75},
+          {"label": "Feedback da cozinha", "multiplicador": 0.5}
+        ]
+      }
+    },
+    {
+      "id": "Q19",
+      "section": "m2",
+      "title": "Detecção de Anomalias",
+      "type": "radio",
+      "required": true,
+      "baseScore": 1,
+      "options": [
+        {"label": "Só percebo quando caixa não fecha", "pontos": 0},
+        {"label": "Reviso relatórios/manual", "pontos": 0.5},
+        {"label": "Sistema trava caixa automaticamente", "pontos": 1}
+      ],
+      "followUps": ["Q19a"]
+    },
+    {
+      "id": "Q19a",
+      "section": "m2",
+      "title": "Método Anomalia",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q19 = 0.5 ou 1 ponto.",
+      "options": [
+        {"label": "PDV com IA", "multiplicador": 1},
+        {"label": "Planilha com regras", "multiplicador": 0.75},
+        {"label": "Notificações básicas", "multiplicador": 0.6}
+      ]
+    },
+    {
+      "id": "Q20",
+      "section": "m3",
+      "title": "Rastreamento de Eficiência Humana",
+      "type": "radio",
+      "required": true,
+      "baseScore": 1,
+      "options": [
+        {"label": "Não sei", "pontos": 0},
+        {"label": "Tem horário calmo", "pontos": 0},
+        {"label": "Sim, ficam ociosos", "pontos": 0.5},
+        {"label": "Identifiquei e ajustei escala", "pontos": 1}
+      ],
+      "followUps": ["Q20a"]
+    },
+    {
+      "id": "Q20a",
+      "section": "m3",
+      "title": "Método Eficiência Humana",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q20 = 0.5 ou 1 ponto.",
+      "options": [
+        {"label": "Sistema cruza ponto + vendas", "multiplicador": 1},
+        {"label": "Planilha com horas", "multiplicador": 0.75},
+        {"label": "Cálculo manual", "multiplicador": 0.5}
+      ]
+    },
+    {
+      "id": "Q21",
+      "section": "m3",
+      "title": "Rastreamento de Eficiência de Espaço",
+      "type": "radio_contextual",
+      "required": true,
+      "baseScore": 1,
+        "options": {
+          "salao": [
+            {"label": "Não sei área", "pontos": 0},
+            {"label": "Acho que está ok", "pontos": 0},
+            {"label": "Sei que está abaixo", "pontos": 0.5},
+            {"label": "Sei e já reduzo", "pontos": 1}
+          ],
+          "delivery": [
+            {"label": "Não sei área", "pontos": 0},
+            {"label": "Acho que está ok", "pontos": 0},
+            {"label": "Sei que está abaixo", "pontos": 0.5},
+            {"label": "Sei e renegocio", "pontos": 1}
+          ]
+        },
+      "followUps": ["Q21a"]
+    },
+    {
+      "id": "Q21a",
+      "section": "m3",
+      "title": "Método Eficiência Espaço",
+      "type": "radio_contextual",
+      "required": true,
+      "displayRule": "Somente se Q21 = 0.5 ou 1 ponto.",
+      "options": {
+        "salao": [
+          {"label": "Sistema com área cadastrada", "multiplicador": 1},
+          {"label": "Divido faturamento pela área", "multiplicador": 0.75},
+          {"label": "Estimativa aproximada", "multiplicador": 0.5}
+        ],
+        "delivery": [
+          {"label": "Sistema com área cadastrada", "multiplicador": 1},
+          {"label": "Divido faturamento pela área", "multiplicador": 0.75},
+          {"label": "Estimativa aproximada", "multiplicador": 0.5}
+        ]
+      }
+    },
+    {
+      "id": "Q22",
+      "section": "m3",
+      "title": "Rastreamento de CAC",
+      "type": "radio",
+      "required": true,
+      "baseScore": 1,
+      "options": [
+        {"label": "Não sei", "pontos": 0},
+        {"label": "Sei aproximadamente", "pontos": 0},
+        {"label": "Sei e estou no limite", "pontos": 0.5},
+        {"label": "Sei e parei meios caros", "pontos": 1}
+      ],
+      "followUps": ["Q22a"]
+    },
+    {
+      "id": "Q22a",
+      "section": "m3",
+      "title": "Método CAC",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q22 = 0.5 ou 1 ponto.",
+      "options": [
+        {"label": "Marketing ÷ novos clientes (automático)", "multiplicador": 1},
+        {"label": "Cálculo manual por campanha", "multiplicador": 0.75},
+        {"label": "Estimativa sem dados", "multiplicador": 0.4}
+      ]
+    },
+    {
+      "id": "Q23",
+      "section": "m3",
+      "title": "Rastreamento de CAC por Canal",
+      "type": "radio",
+      "required": true,
+      "baseScore": 1,
+      "options": [
+        {"label": "Não separo por canal", "pontos": 0},
+        {"label": "Sei qual tem mais tráfego", "pontos": 0.5},
+        {"label": "Sei o custo por canal", "pontos": 1}
+      ],
+      "followUps": ["Q23a"]
+    },
+    {
+      "id": "Q23a",
+      "section": "m3",
+      "title": "Método CAC Canal",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q23 = 0.5 ou 1 ponto.",
+      "options": [
+        {"label": "UTM/pixel + CRM", "multiplicador": 1},
+        {"label": "Relatórios dos anúncios", "multiplicador": 0.75},
+        {"label": "Pergunto aos clientes", "multiplicador": 0.4}
+      ]
+    },
+    {
+      "id": "Q24",
+      "section": "m3",
+      "title": "Rastreamento de Margem por Categoria",
+      "type": "radio",
+      "required": true,
+      "baseScore": 1,
+      "options": [
+        {"label": "Não calculo", "pontos": 0},
+        {"label": "Sei margem geral", "pontos": 0.5},
+        {"label": "Sei margem por categoria", "pontos": 1}
+      ],
+      "followUps": ["Q24a"]
+    },
+    {
+      "id": "Q24a",
+      "section": "m3",
+      "title": "Método Margem Categoria",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q24 = 0.5 ou 1 ponto.",
+      "options": [
+        {"label": "PDV separa automaticamente", "multiplicador": 1},
+        {"label": "Planilha com fórmulas", "multiplicador": 0.75},
+        {"label": "Estimativa geral", "multiplicador": 0.5}
+      ]
+    },
+    {
+      "id": "Q25",
+      "section": "m3",
+      "title": "Rastreamento de Taxa de Retorno",
+      "type": "radio",
+      "required": true,
+      "baseScore": 1,
+      "options": [
+        {"label": "Não sei", "pontos": 0},
+        {"label": "Acho que volta metade", "pontos": 0},
+        {"label": "Volta 25%", "pontos": 0.5},
+        {"label": "Volta 35% e lancei fidelidade", "pontos": 1}
+      ],
+      "followUps": ["Q25a"]
+    },
+    {
+      "id": "Q25a",
+      "section": "m3",
+      "title": "Método Taxa Retorno",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q25 = 0.5 ou 1 ponto.",
+      "options": [
+        {"label": "CRM rastreia cliente", "multiplicador": 1},
+        {"label": "Sistema conta recorrentes", "multiplicador": 0.75},
+        {"label": "Estimativa visual", "multiplicador": 0.4}
+      ]
+    },
+    {
+      "id": "Q26",
+      "section": "m3",
+      "title": "Rastreamento de NPS/Satisfação",
+      "type": "radio",
+      "required": true,
+      "baseScore": 1,
+      "options": [
+        {"label": "Não olho reviews", "pontos": 0},
+        {"label": "Olho quando lembro", "pontos": 0},
+        {"label": "Vejo semanalmente", "pontos": 0.5},
+        {"label": "Dashboard automático", "pontos": 1}
+      ],
+      "followUps": ["Q26a"]
+    },
+    {
+      "id": "Q26a",
+      "section": "m3",
+      "title": "Método NPS/Satisfação",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q26 = 0.5 ou 1 ponto.",
+      "options": [
+        {"label": "Pesquisa automática pós-atendimento", "multiplicador": 1},
+        {"label": "Formulário manual", "multiplicador": 0.75},
+        {"label": "Reviews espontâneas", "multiplicador": 0.5}
+      ]
+    },
+    {
+      "id": "Q27",
+      "section": "m3",
+      "title": "Rastreamento de Mix de Vendas",
+      "type": "radio",
+      "required": true,
+      "baseScore": 1,
+      "options": [
+        {"label": "Não analiso", "pontos": 0},
+        {"label": "Sei que sexta vende mais", "pontos": 0},
+        {"label": "Sei dias/horários e mix", "pontos": 0.5},
+        {"label": "Tenho forecast por dia/item", "pontos": 1}
+      ],
+      "followUps": ["Q27a"]
+    },
+    {
+      "id": "Q27a",
+      "section": "m3",
+      "title": "Método Mix Vendas",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q27 = 0.5 ou 1 ponto.",
+      "options": [
+        {"label": "BI com dashboards", "multiplicador": 1},
+        {"label": "Relatórios do PDV", "multiplicador": 0.75},
+        {"label": "Observação empírica", "multiplicador": 0.5}
+      ]
+    },
+    {
+      "id": "Q28",
+      "section": "m3",
+      "title": "Rastreamento de Comissões/Taxas",
+      "type": "radio_contextual",
+      "required": true,
+      "baseScore": 1,
+        "options": {
+          "delivery": [
+            {"label": "Não sei custo real", "pontos": 0},
+            {"label": "Sei comissão básica", "pontos": 0},
+            {"label": "Sei comissão + taxas + promoções", "pontos": 0.5},
+            {"label": "Calculei custo total e reduzi canal", "pontos": 1}
+          ],
+          "salao": [
+            {"label": "Não sei", "pontos": 0},
+            {"label": "Sei taxa média (~3%)", "pontos": 0.5},
+            {"label": "Sei por bandeira e renegociei", "pontos": 1}
+          ]
+        },
+      "followUps": ["Q28a"]
+    },
+    {
+      "id": "Q28a",
+      "section": "m3",
+      "title": "Método Comissões",
+      "type": "radio_contextual",
+      "required": true,
+      "displayRule": "Somente se Q28 = 0.5 ou 1 ponto.",
+      "options": {
+        "delivery": [
+          {"label": "Planilha integrada com APIs", "multiplicador": 1},
+          {"label": "Cálculo manual mensal", "multiplicador": 0.75},
+          {"label": "Estimativa geral", "multiplicador": 0.5}
+        ],
+        "salao": [
+          {"label": "Extrato detalhado por bandeira", "multiplicador": 1},
+          {"label": "Extrato consolidado", "multiplicador": 0.75},
+          {"label": "Não acompanho", "multiplicador": 0.4}
+        ]
+      }
+    },
+    {
+      "id": "Q29",
+      "section": "m3",
+      "title": "Rastreamento de Promoções/ROI Marketing",
+      "type": "radio",
+      "required": true,
+      "baseScore": 1,
+      "options": [
+        {"label": "Faço promoção sem medir", "pontos": 0},
+        {"label": "Vejo se aumentou vendas", "pontos": 0},
+        {"label": "Calculo vendas incrementais vs desconto", "pontos": 0.5},
+        {"label": "Dashboard de ROI por campanha", "pontos": 1}
+      ],
+      "followUps": ["Q29a"]
+    },
+    {
+      "id": "Q29a",
+      "section": "m3",
+      "title": "Método ROI Marketing",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q29 = 0.5 ou 1 ponto.",
+      "options": [
+        {"label": "Tracking com códigos únicos", "multiplicador": 1},
+        {"label": "Comparação antes/durante/depois", "multiplicador": 0.75},
+        {"label": "Sensação de que vendeu mais", "multiplicador": 0.4}
+      ]
+    },
+    {
+      "id": "Q30",
+      "section": "m4",
+      "title": "Planejamento de Crescimento",
+      "type": "radio",
+      "required": true,
+      "baseScore": 1,
+      "options": [
+        {"label": "Não tenho plano", "pontos": 0},
+        {"label": "Penso em crescer sem plano", "pontos": 0},
+        {"label": "Tenho metas sem roadmap", "pontos": 0.5},
+        {"label": "Plano 90 dias com KPIs", "pontos": 1}
+      ],
+      "followUps": ["Q30a"]
+    },
+    {
+      "id": "Q30a",
+      "section": "m4",
+      "title": "Horizonte Planejamento",
+      "type": "radio",
+      "required": true,
+      "displayRule": "Somente se Q30 = 0.5 ou 1 ponto.",
+      "options": [
+        {"label": "Plano 12+ meses com cenários", "multiplicador": 1},
+        {"label": "Plano 3-6 meses", "multiplicador": 0.8},
+        {"label": "Metas vagas", "multiplicador": 0.5}
+      ]
+    }
+  ]
+}
